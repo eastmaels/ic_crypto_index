@@ -4,11 +4,24 @@ import express from 'express';
 import api from './api';
 
 class User {
-  id: string;
-  username: string;
-  password: string;
-  mail: string;
-  createdAt: Date;
+    constructor(id: string, username: string, password: string, mail: string, createdAt: Date) {
+        if (!validateEmail(mail)) {
+            throw new Error('Invalid email format');
+        }
+
+        this.id = id;
+        this.username = username;
+        this.passwordHash = hashPassword(password, this.salt);
+        this.mail = mail;
+        this.createdAt = createdAt;
+    }
+}
+
+function validateEmail(mail: string): boolean {
+    const re = /\S+@\S+\.\S+/;
+    return re.test(mail);
+}
+
 
   constructor(id: string, username: string, password: string, mail: string, createdAt: Date) {
       this.id = id;
@@ -75,19 +88,44 @@ export default Server(() => {
 
    app.use('/', api(storages));
 
-   app.post("/ohlc", (req, res) => {
-    console.log('...req.body', {...req.body});
-      const crypto: Crypto =  {id: uuidv4(), createdAt: getCurrentDate(), ...req.body};
-      CryptoStorage.insert(crypto.id, crypto);
-      res.json(crypto);
-   });
+   app.post("/ohlc", async (req, res) => {
+    try {
+        const { symbol, open, close, high, low, idx_date } = req.body;
 
-   app.get("/ohlc", (req, res) => {
-    const symbol: any = req.query.symbol;
-    console.log('symbol', symbol);
+        // Input validation
+        if (!symbol || isNaN(open) || isNaN(close) || isNaN(high) || isNaN(low) || !isValidDate(idx_date)) {
+            return res.status(400).json({ error: 'Invalid input' });
+        }
+
+        // Insert record
+        const crypto: Crypto = { id: uuidv4(), createdAt: getCurrentDate(), ...req.body };
+        await CryptoStorage.insert(crypto.id, crypto);
+
+        res.status(201).json(crypto);  // Successful response
+    } catch (error) {
+        console.error('Error inserting OHLC data:', error);
+        res.status(500).json({ error: 'Failed to insert OHLC data' });
+    }
+});
+
+function isValidDate(date: string): boolean {
+    return !isNaN(Date.parse(date));
+}
+
+app.get("/ohlc", (req, res) => {
+    const symbol = req.query.symbol;
+
+    // Input validation
+    if (!symbol || typeof symbol !== 'string') {
+        return res.status(400).json({ error: 'Invalid or missing symbol' });
+    }
 
     let records = CryptoStorage.values();
-    console.log('records', records)
+    let values = records.filter((item: Crypto) => item.symbol === symbol);
+
+    res.status(200).json(values);
+});
+
 
     let values: any = [];
     if (symbol) {
@@ -111,27 +149,26 @@ export default Server(() => {
     res.status(200).json(values);
    });
 
-   app.get("/ohlc/by_date", (req, res) => {
+    app.get("/ohlc/by_date", (req, res) => {
     const startDateParam = req.query.startDate;
     const endDateParam = req.query.endDate;
-    console.log('startDateParam', startDateParam)
-    console.log('endDateParam', endDateParam)
 
-    if (!startDateParam || !endDateParam) {
-      res.status(200).json([]);
+    // Validate date inputs
+    if (!startDateParam || !endDateParam || isNaN(Date.parse(startDateParam)) || isNaN(Date.parse(endDateParam))) {
+        return res.status(400).json({ error: 'Invalid date parameters' });
     }
 
     const records = CryptoStorage.values();
+    const startDate = new Date(startDateParam);
+    const endDate = new Date(endDateParam);
 
     let filtered = records.filter((item: Crypto) => {
-      const idx_date = new Date(item.idx_date);
-      const startDate = new Date(startDateParam);
-      const endDate = new Date(endDateParam);
-      console.log('startDate', startDate)
-      console.log('endDate', endDate)
-
-      return (idx_date > startDate && idx_date < endDate)
+        const idx_date = new Date(item.idx_date);
+        return (idx_date >= startDate && idx_date <= endDate);  // Include boundaries
     });
+
+    res.status(200).json(filtered);
+});
 
 
     const items = filtered.map(item => {
@@ -150,6 +187,22 @@ export default Server(() => {
     res.status(200).json(items);
    });
 
+     app.get("/ohlc/:id", (req, res) => {
+    const id = req.params.id;
+    const record = CryptoStorage.get(id);
+
+    if (record.isNone()) {
+        return res.status(404).json({ error: 'Record not found' });
+    }
+
+    const crypto_details = {
+        id: record.unwrap().id,
+        symbol: record.unwrap().symbol,
+        idx_date: record.unwrap().idx_date,
+    };
+
+    res.status(200).json(crypto_details);
+});
 
   //  app.get("/ohlc/:id", (req, res) => {
   //   const id = req.params.id;
