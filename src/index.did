@@ -1,4 +1,12 @@
 service: () -> {
-    http_request: (record {url:text; method:text; body:vec nat8; headers:vec record {text; text}; certificate_version:opt nat16}) -> (record {body:vec nat8; headers:vec record {text; text}; upgrade:opt bool; streaming_strategy:opt variant {Callback:record {token:vec nat8; callback:func (vec nat8) -> (opt record {token:opt vec nat8; body:vec nat8}) query}}; status_code:nat16}) query;
-    http_request_update: (record {url:text; method:text; body:vec nat8; headers:vec record {text; text}}) -> (record {body:vec nat8; headers:vec record {text; text}; upgrade:opt bool; streaming_strategy:opt variant {Callback:record {token:vec nat8; callback:func (vec nat8) -> (opt record {token:opt vec nat8; body:vec nat8}) query}}; status_code:nat16});
+    http_request: (record { url: text; method: text; body: vec nat8; headers: vec record { text; text }; certificate_version: opt nat16 }) -> (record { body: vec nat8; headers: vec record { text; text }; upgrade: opt bool; streaming_strategy: opt variant { Callback: record { token: vec nat8; callback: func (vec nat8) -> (opt record { token: opt vec nat8; body: vec nat8 }) query }}; status_code: nat16 }) query;
+    http_request_update: (record { url: text; method: text; body: vec nat8; headers: vec record { text; text } }) -> (record { body: vec nat8; headers: vec record { text; text }; upgrade: opt bool; streaming_strategy: opt variant { Callback: record { token: vec nat8; callback: func (vec nat8) -> (opt record { token: opt vec nat8; body: vec nat8 }) query }}; status_code: nat16 });
+    create_user: (record { username: text; password: text; mail: text }) -> (record { id: text; username: text; mail: text; createdAt: text });
+    generate_apikey: (record { username: text }) -> (record { id: text; username: text; createdAt: text; expiresAt: text });
+    create_ohlc: (record { symbol: text; open: float32; close: float32; high: float32; low: float32; idx_date: text }) -> (record { id: text; symbol: text; open: float32; close: float32; high: float32; low: float32; idx_date: text; createdAt: text });
+    update_ohlc: (record { id: text; symbol: text; open: float32; close: float32; high: float32; low: float32; idx_date: text }) -> (record { id: text; symbol: text; open: float32; close: float32; high: float32; low: float32; idx_date: text; createdAt: text });
+    delete_ohlc: (record { id: text }) -> ();
+    get_ohlc_by_id: (record { id: text }) -> (opt record { id: text; symbol: text; open: float32; close: float32; high: float32; low: float32; idx_date: text; createdAt: text });
+    get_ohlc_by_symbol: (record { symbol: text }) -> (vec record { id: text; symbol: text; open: float32; close: float32; high: float32; low: float32; idx_date: text; createdAt: text });
+    get_ohlc_by_date_range: (record { startDate: text; endDate: text }) -> (vec record { id: text; symbol: text; open: float32; close: float32; high: float32; low: float32; idx_date: text; createdAt: text });
 }
